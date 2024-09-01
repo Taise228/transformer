@@ -114,6 +114,10 @@ if __name__ == '__main__':
     tokens = tokenizer(text, return_tensors='pt')['input_ids']
     print(tokens)   # shape: (1, token_length)
 
+    print(tokenizer.convert_ids_to_tokens(tokens[0]))
+    # ['[CLS]', 'hello', ',', 'world', '!', 'this', 'is', 'transform', '##er', 'em', '##bed', '##ding', 'layer', '.', '[SEP]']
+    # len(tokenizer.convert_ids_to_tokens(tokens[0])) == token_length (in this case, 15)
+
     embedder = TransformerEmbedding(tokenizer.vocab_size, 768)
     embedded = embedder(tokens)
     print(embedded.shape)   # torch.Size([1, token_length, 768])
