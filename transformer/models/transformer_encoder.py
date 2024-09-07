@@ -1,7 +1,7 @@
 import torch.nn as nn
 
 from transformer.blocks.embedding import TransformerEmbedding
-from transformer.layers.encoder_layer import TransformerEncoderLayer
+from transformer.layers.encoder_layer import EncoderLayer
 
 
 class TransformerEncoder(nn.Module):
@@ -42,7 +42,7 @@ class TransformerEncoder(nn.Module):
 
         self.embedding = TransformerEmbedding(tokenizer.vocab_size, d_model, max_len=max_len,
                                               padding_idx=padding_idx, dropout=dropout, device=device)
-        self.layers = nn.ModuleList([TransformerEncoderLayer(d_model, num_heads, d_ff, dropout, eps=eps) for _ in range(N)])
+        self.layers = nn.ModuleList([EncoderLayer(d_model, num_heads, d_ff, dropout, eps=eps) for _ in range(N)])
 
     def forward(self, x, mask):
         """ Forward method of transformer encoder
