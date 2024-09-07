@@ -1,4 +1,5 @@
 from transformer.models.transformer import Transformer
+from transformer.utils.visualize_attention import visualize_attn
 from transformers import AutoTokenizer
 
 
@@ -18,6 +19,7 @@ if __name__ == '__main__':
     print(src)
     print(tgt)
 
+    src_morpheme = src_tokenizer.convert_ids_to_tokens(src[0])
     tgt_morpheme = tgt_tokenizer.convert_ids_to_tokens(tgt[0])
     print(tgt_morpheme)
 
@@ -26,3 +28,9 @@ if __name__ == '__main__':
     output_ids = output['logits'].argmax(-1)
     output_morpheme = tgt_tokenizer.convert_ids_to_tokens(output_ids[0])
     print(output_morpheme)
+
+    # visualize
+    src_attn = []
+    for attn in output['encoder_attention']:
+        src_attn.append(attn[0])   # first batch
+    visualize_attn(src_morpheme, src_morpheme, src_attn, './results/encoder_attention')

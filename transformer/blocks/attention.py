@@ -106,9 +106,6 @@ class MultiHeadAttention(nn.Module):
         v = self.W_v(v)
         v = v.view(batch_size, k_seq_len, self.num_heads, self.d_v).transpose(1, 2)   # shape: (batch_size, num_heads, k_seq_len, d_v)
 
-        # Compute attention
-        if mask is not None:
-            mask = mask.unsqueeze(1)   # shape: (batch_size, 1, q_seq_len, k_seq_len)
         context, attention = self.attention(q, k, v, mask)
 
         # Concatenate multi-heads
