@@ -1,5 +1,5 @@
 from transformer.models.transformer import Transformer
-from transformer.utils.visualize_attention import visualize_attn
+from transformer.utils import visualize_attn
 from transformers import AutoTokenizer
 
 
