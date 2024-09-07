@@ -17,11 +17,12 @@ class Embedding(nn.Embedding):
 
 
 class PositionalEmbedding(nn.Module):
-    def __init__(self, emb_dim, max_len=512):
+    def __init__(self, emb_dim, device, max_len=512):
         """ Positional embedding for transformer model
         
         Args
             emb_dim (int): dimension of embedding
+            device (str): device to use
             max_len (int): maximum length of token sequence (i.e. the number of tokens in a single input)
                 default: 512
         """
@@ -29,6 +30,7 @@ class PositionalEmbedding(nn.Module):
         self.emb_dim = emb_dim
         self.max_len = max_len
         self.pe = self._calc_positional_encoding()
+        self.pe = self.pe.to(device)
 
     def _calc_positional_encoding(self):
         """ Calculate positional encoding matrix with following formula:
@@ -69,7 +71,7 @@ class PositionalEmbedding(nn.Module):
     
 
 class TransformerEmbedding(nn.Module):
-    def __init__(self, vocab_size, emb_dim, max_len=512, padding_idx=None, dropout=0.1):
+    def __init__(self, vocab_size, emb_dim, max_len=512, padding_idx=None, dropout=0.1, device='gpu'):
         """ Embedding layer for transformer model
 
         Args:
@@ -81,10 +83,12 @@ class TransformerEmbedding(nn.Module):
                 default: None
             dropout (float): dropout rate. If dropout is 0, dropout is not applied.
                 default: 0.1
+            device (str): device to use
+                default: 'gpu'
         """
         super().__init__()
         self.emb = Embedding(vocab_size, emb_dim, padding_idx=padding_idx)
-        self.pos_emb = PositionalEmbedding(emb_dim, max_len=max_len)
+        self.pos_emb = PositionalEmbedding(emb_dim, device=device, max_len=max_len)
         self.dropout = nn.Dropout(dropout)
         self.emb_dim = emb_dim
 

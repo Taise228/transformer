@@ -44,13 +44,13 @@ class EncoderLayer(nn.Module):
                 shape: (batch_size, num_heads, seq_len, seq_len)
         """
 
-        # Multi-head attention
+        # self attention
         context, attn = self.attention(x, x, x, mask)   # Q, K, V are all x
         context = self.dropout1(context)
         x = self.norm1(x + context)   # Residual connection and layer normalization
         # x.shape == context.shape == (batch_size, seq_len, d_model)
 
-        # Position-wise feed forward network
+        # position-wise feed forward network
         output = self.pw_ffn(x)   # shape: (batch_size, seq_len, d_model)
         output = self.dropout2(output)
         x = self.norm2(x + output)   # Residual connection and layer normalization

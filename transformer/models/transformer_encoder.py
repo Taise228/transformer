@@ -5,7 +5,7 @@ from transformer.layers.encoder_layer import TransformerEncoderLayer
 
 
 class TransformerEncoder(nn.Module):
-    def __init__(self, tokenizer, d_model, num_heads, d_ff, N=6, dropout=0.1, **kwargs):
+    def __init__(self, tokenizer, d_model, num_heads, d_ff, N=6, dropout=0.1, device='gpu', **kwargs):
         """ Transformer Encoder
 
         Args:
@@ -17,6 +17,8 @@ class TransformerEncoder(nn.Module):
                 default: 6
             dropout (float): dropout rate
                 default: 0.1
+            device (str): device to use
+                default: 'gpu'
             kwargs: keyword arguments listed below;
                 max_len (int): maximum length of token sequence. default: 512
                 padding_idx (int): index of padding token. default: None
@@ -38,14 +40,15 @@ class TransformerEncoder(nn.Module):
         else:
             eps = 1e-6
 
-        self.embedding = TransformerEmbedding(tokenizer.vocab_size, d_model, max_len=max_len, padding_idx=padding_idx, dropout=dropout)
+        self.embedding = TransformerEmbedding(tokenizer.vocab_size, d_model, max_len=max_len,
+                                              padding_idx=padding_idx, dropout=dropout, device=device)
         self.layers = nn.ModuleList([TransformerEncoderLayer(d_model, num_heads, d_ff, dropout, eps=eps) for _ in range(N)])
 
     def forward(self, x, mask):
         """ Forward method of transformer encoder
 
         Args:
-            x (torch.Tensor): input tensor
+            x (torch.Tensor): input tensor of tokenized input sequence
                 shape: (batch_size, seq_len)
             mask (torch.Tensor): attention mask
                 shape: (batch_size, seq_len, seq_len)
