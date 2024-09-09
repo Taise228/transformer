@@ -11,6 +11,7 @@ class TranslationDataset(data.Dataset):
             src (List[str]): list of source language token indexes
             tgt (List[str]): list of target language token indexes
         """
+        assert len(src) == len(tgt), "number of source and target should be same"
         self.src = src
         self.tgt = tgt
 

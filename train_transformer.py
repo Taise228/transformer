@@ -1,10 +1,15 @@
 import argparse
+import logging
 
+import torch
+import torch.nn as nn
 from transformer.models.transformer import Transformer
 from transformer.dataset import TranslationDataset
 from transformer.trainer import Trainer
-from trainformer.utils import get_config
+from transformer.utils import get_config
 from transformers import AutoTokenizer
+
+logging.basicConfig(level=logging.INFO)
 
 
 def main(config):

@@ -1,3 +1,7 @@
+from pathlib import Path
+import time
+import tqdm
+
 import torch
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
@@ -8,7 +12,7 @@ logger = get_logger(__name__)
 
 
 class Trainer:
-    """ Trainer class
+    """Trainer class for training transformer model
     """
 
     def __init__(self, model, criterion, optimizer, scheduler, config):
@@ -48,17 +52,21 @@ class Trainer:
                                   drop_last=True, num_workers=4, pin_memory=True)
         valid_loader = DataLoader(valid_data, batch_size=self.config['training']['batch_size'], shuffle=False,
                                   drop_last=False, num_workers=4, pin_memory=True)
+        logger.info(f'Train data: {len(train_data)}, Valid data: {len(valid_data)}')
 
         if resume:
             self.resume(resume)
 
         best_loss = float('inf')
+        start_time = time.time()
         for epoch in range(self.config['training']['epochs']):
+            logger.info(f'Epoch: {epoch+1}/{self.config["training"]["epochs"]}')
+            epoch_start_time = time.time()
             self.writer.add_scalar('Learning Rate', self.optimizer.param_groups[0]['lr'], epoch + 1)
 
             self.model.train()
             total_loss = 0
-            for src, tgt in train_loader:
+            for i, (src, tgt) in tqdm.tqdm(enumerate(train_loader), total=len(train_loader)):
                 src = self.model.src_tokenizer(src, padding=True, truncation=True, return_tensors='pt')['input_ids']
                 tgt = self.model.tgt_tokenizer(tgt, padding=True, truncation=True, return_tensors='pt')['input_ids']
                 src, tgt = src.to(self.device), tgt.to(self.device)
@@ -76,7 +84,13 @@ class Trainer:
 
                 self.optimizer.step()
                 total_loss += loss.item()
-            logger.info(f'Epoch: {epoch+1}, Loss: {total_loss:.4f}')
+
+                if (i + 1) % self.config['training']['log_interval'] == 0:
+                    logger.info(f'Epoch: {epoch+1}, Batch: [{i+1}/{len(train_loader)}], Loss: {loss.item():.4f}')
+                    if self.writer:
+                        # tensorboard
+                        self.writer.add_scalar('Loss/train_batch', loss.item(), epoch * len(train_loader) + i + 1)
+            logger.info(f'Epoch: {epoch+1}, Loss: {total_loss:.4f}, Elapsed time: {time.time() - epoch_start_time:.4f}')
             if self.writer:
                 # tensorboard
                 self.writer.add_scalar('Loss/train', total_loss, epoch + 1)
@@ -112,7 +126,8 @@ class Trainer:
         checkpoint = torch.load(path)
         self.model.load_state_dict(checkpoint['model'])
         self.optimizer.load_state_dict(checkpoint['optimizer'])
-
+        self.scheduler.load_state_dict(checkpoint['scheduler'])
+        logger.info(f'Model is loaded from {path}')
 
     def save(self, path, loss=None):
         """ Save model
@@ -122,9 +137,13 @@ class Trainer:
         """
         save_dict = {
             'model': self.model.state_dict(),
-            'optimizer': self.optimizer.state_dict()
-            'loss': loss
+            'optimizer': self.optimizer.state_dict(),
+            'scheduler': self.scheduler.state_dict(),
+            'loss': loss,
         }
+        path = Path(self.save_dir) / path
+        if not path.parent.exists():
+            path.parent.mkdir(parents=True, exist_ok=True)
         torch.save(save_dict, path)
         logger.info(f'Model is saved at {path}')
 
