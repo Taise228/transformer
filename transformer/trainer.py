@@ -11,23 +11,26 @@ class Trainer:
     """ Trainer class
     """
 
-    def __init__(self, model, criterion, optimizer, config):
+    def __init__(self, model, criterion, optimizer, scheduler, config):
         """ Instantiating Trainer class
         Args:
             model (nn.Module): model to train
             criterion (torch.nn.modules.loss._Loss): loss function
             optimizer (torch.optim): optimizer
+            scheduler (torch.optim.lr_scheduler): learning rate scheduler
             config (dict): configuration
         """
         self.model = model
         self.criterion = criterion
         self.optimizer = optimizer
+        self.scheduler = scheduler
         self.config = config
 
         self.device = self.config['model']['device']
         self.model.to(self.device)
 
         self.save_dir = self.config['training']['save_dir']
+        self.warmup_epochs = self.config['training']['warmup_epochs']
 
         if self.config['training']['tensorboard']:
             self.writer = SummaryWriter(self.config['training']['log_dir'])
@@ -51,12 +54,15 @@ class Trainer:
 
         best_loss = float('inf')
         for epoch in range(self.config['training']['epochs']):
+            self.writer.add_scalar('Learning Rate', self.optimizer.param_groups[0]['lr'], epoch + 1)
+
             self.model.train()
             total_loss = 0
             for src, tgt in train_loader:
                 src = self.model.src_tokenizer(src, padding=True, truncation=True, return_tensors='pt')['input_ids']
                 tgt = self.model.tgt_tokenizer(tgt, padding=True, truncation=True, return_tensors='pt')['input_ids']
                 src, tgt = src.to(self.device), tgt.to(self.device)
+
                 self.optimizer.zero_grad()
                 output = self.model(src, tgt[:, :-1])['logits']   # shape: (batch_size, tgt_len, vocab_size)
                 output = output.reshape(-1, output.size(2))   # shape: (batch_size * tgt_len, vocab_size)
@@ -64,10 +70,15 @@ class Trainer:
                 # CrossEntropyLoss converts the target to one-hot encoding internally.
                 loss = self.criterion(output, tgt)
                 loss.backward()
+
+                # gradient clipping
+                torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.config['training']['clip_grad_norm'])
+
                 self.optimizer.step()
                 total_loss += loss.item()
             logger.info(f'Epoch: {epoch+1}, Loss: {total_loss:.4f}')
             if self.writer:
+                # tensorboard
                 self.writer.add_scalar('Loss/train', total_loss, epoch + 1)
 
             self.model.eval()
@@ -82,10 +93,15 @@ class Trainer:
                     total_loss += loss.item()
             logger.info(f'Epoch: {epoch+1}, Validation Loss: {total_loss:.4f}')
             if self.writer:
+                # tensorboard
                 self.writer.add_scalar('Loss/valid', total_loss, epoch + 1)
             if total_loss < best_loss:
                 best_loss = total_loss
                 self.save('best.pth', loss=best_loss)
+
+            if epoch > self.warmup_epochs:
+                self.scheduler.step()
+
         self.save('last.pth', loss=total_loss)
 
     def resume(self, path):
