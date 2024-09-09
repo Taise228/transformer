@@ -1,0 +1,25 @@
+model:
+  src_tokenizer: bert-base-uncased
+  tgt_tokenizer: cl-tohoku/bert-base-japanese
+  N: 6   # number of encoder and decoder layers
+  num_heads: 8   # number of heads in multi-head attention
+  d_model: 512   # inner vector dimension of model
+  d_ff: 2048   # inner vector dimension of feed forward layer
+  dropout: 0.1   # dropout rate
+  max_len: 512   # max length of input sequence
+  eps: 1e-6   # epsilon value for layer normalization
+training:
+  batch_size: 32   # batch size for training
+  epochs: 10   # number of epochs
+  lr: 0.1   # learning rate
+  weight_decay: 0.0005
+  warmup_steps: 100
+  clip_grad_norm: 1.0
+  save_dir: transformer/weights
+  resume: None
+  tensorboard: True
+  log_dir: logs
+data:
+  train_data: data/train.txt
+  val_data: data/dev.txt
+  test_data: data/test.txt

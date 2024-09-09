@@ -23,7 +23,6 @@ class Transformer(nn.Module):
                 default: 'gpu'
             kwargs: keyword arguments listed below;
                 max_len (int): maximum length of token sequence. default: 512
-                padding_idx (int): index of padding token. default: None
                 eps (float): epsilon value for layer normalization. default: 1e-6
         """
 
@@ -34,19 +33,18 @@ class Transformer(nn.Module):
             max_len = kwargs['max_len']
         else:
             max_len = 512
-        if 'padding_idx' in kwargs:
-            padding_idx = kwargs['padding_idx']
-        else:
-            padding_idx = None
         if 'eps' in kwargs:
             eps = kwargs['eps']
         else:
             eps = 1e-6
 
+        src_padding_idx = src_tokenizer.pad_token_id
+        tgt_padding_idx = tgt_tokenizer.pad_token_id
+
         self.encoder = TransformerEncoder(src_tokenizer, d_model, num_heads, d_ff, N=N, dropout=dropout, device=device,
-                                          max_len=max_len, padding_idx=padding_idx, eps=eps)
+                                          max_len=max_len, padding_idx=src_padding_idx, eps=eps)
         self.decoder = TransformerDecoder(tgt_tokenizer, d_model, num_heads, d_ff, N=N, dropout=dropout, device=device,
-                                          max_len=max_len, padding_idx=padding_idx, eps=eps)
+                                          max_len=max_len, padding_idx=tgt_padding_idx, eps=eps)
         self.head = nn.Linear(d_model, tgt_tokenizer.vocab_size)
 
         self.src_tokenizer = src_tokenizer
