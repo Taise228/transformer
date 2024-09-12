@@ -16,8 +16,8 @@ training:
   weight_decay: 0.0005
   warmup_epochs: 10   # number of warmup epochs
   clip_grad_norm: 1.0   # gradient clipping threshold
-  save_dir: transformer/weights
-  resume:
+  save_dir: weights   # directory to save model weights
+  resume:   # path to model weights for resuming training
   tensorboard: True
   log_dir: logs
   log_interval: 100
