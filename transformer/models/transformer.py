@@ -123,3 +123,46 @@ class Transformer(nn.Module):
 
         mask = (x != self.src_tokenizer.pad_token_id).unsqueeze(1).unsqueeze(2)
         return mask
+    
+    def inference(self, src, max_len=128):
+        """ Inference method of transformer model.
+        Generate target sequence given source sequence.
+
+        Args:
+            src (torch.Tensor): input tensor of tokenized source sequence
+                shape: (batch_size, src_len)
+            max_len (int): maximum length of output sequence
+                default: 128
+
+        Returns:
+            outputs (dict): dictionary of output tensors
+                {
+                    'predictions': torch.Tensor, shape: (batch_size, tgt_len)
+                    'encoder_attention': list of torch.Tensor, shape: (batch_size, num_heads, tgt_len, src_len)
+                    'decoder_self_attention': list of torch.Tensor, shape: (batch_size, num_heads, tgt_len, tgt_len)
+                    'decoder_cross_attention': list of torch.Tensor, shape: (batch_size, num_heads, tgt_len, src_len)
+                }
+        """
+
+        batch_size = src.size(0)
+        tgt = torch.ones((batch_size, 1), dtype=torch.long, device=src.device) * self.tgt_tokenizer.cls_token_id
+        # first token is CLS token
+
+        for _ in range(max_len):
+            dec_mask = self._generate_square_subsequent_mask(tgt)
+            cross_mask = self._generate_mask_pad(src)
+
+            enc_output = self.encoder(src, cross_mask)
+            dec_output = self.decoder(tgt, enc_output['output'], dec_mask, cross_mask)
+            logits = self.head(dec_output['output'])
+
+            next_token = logits[:, -1, :].argmax(dim=-1).unsqueeze(1)
+            tgt = torch.cat([tgt, next_token], dim=-1)
+
+        outputs = {
+            'predictions': tgt,
+            'encoder_attention': enc_output['attention'],
+            'decoder_self_attention': dec_output['self_attention'],
+            'decoder_cross_attention': dec_output['cross_attention']
+        }
+        return outputs

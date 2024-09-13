@@ -6,7 +6,7 @@ import numpy as np
 import torch
 
 
-def visualize_attn(src_morpheme, tgt_morpheme, attention, output_dir):
+def visualize_attn(src_morpheme, tgt_morpheme, attention, output_dir, img_name):
     """ Visualize attention weights
     
     Args:
@@ -16,6 +16,7 @@ def visualize_attn(src_morpheme, tgt_morpheme, attention, output_dir):
             length: Number of layers
             each tensor shape: (num_heads, tgt_len, src_len)
         output_dir (str): output directory path
+        img_name (str): image name
     """
 
     attn_mat = torch.stack(attention, dim=0).cpu()   # shape: (num_layers, num_heads, tgt_len, src_len)
@@ -34,19 +35,18 @@ def visualize_attn(src_morpheme, tgt_morpheme, attention, output_dir):
 
     # plot
     Path(output_dir).mkdir(parents=True, exist_ok=True)
-    for i, att_mat in enumerate(joint_attentions):
-        attn_mat_np = att_mat.detach().numpy()
-        fig, ax = plt.subplots()
-        cax = ax.matshow(attn_mat_np, cmap='bone')
-        for (p, q), val in np.ndenumerate(attn_mat_np):
-            ax.text(q, p, f'{val:.2f}', ha='center', va='center', color='black')
-        fig.colorbar(cax)
+    attn_mat_np = joint_attentions[-1].detach().numpy()
+    fig, ax = plt.subplots()
+    cax = ax.matshow(attn_mat_np, cmap='bone')
+    for (p, q), val in np.ndenumerate(attn_mat_np):
+        ax.text(q, p, f'{val:.2f}', ha='center', va='center', color='black')
+    fig.colorbar(cax)
 
-        ax.set_xticklabels([''] + src_morpheme, rotation=90)
-        ax.set_yticklabels([''] + tgt_morpheme)
+    ax.set_xticklabels([''] + src_morpheme, rotation=90)
+    ax.set_yticklabels([''] + tgt_morpheme)
 
-        ax.xaxis.set_major_locator(ticker.MultipleLocator(1))
-        ax.yaxis.set_major_locator(ticker.MultipleLocator(1))
+    ax.xaxis.set_major_locator(ticker.MultipleLocator(1))
+    ax.yaxis.set_major_locator(ticker.MultipleLocator(1))
 
-        plt.savefig(f'{output_dir}/layer_{i}.png')
-        plt.close()
+    plt.savefig(f'{output_dir}/{img_name}.png')
+    plt.close()

@@ -1,36 +1,34 @@
-from transformer.models.transformer import Transformer
-from transformer.utils import visualize_attn
 from transformers import AutoTokenizer
+from transformer.models.transformer import Transformer
+from transformer.utils import get_config
+from transformer.utils import visualize_attn
 
 
 if __name__ == '__main__':
-    src_tokenizer = AutoTokenizer.from_pretrained('bert-base-uncased')
-    tgt_tokenizer = AutoTokenizer.from_pretrained('cl-tohoku/bert-base-japanese')
-    print(f'target vocab size: {len(tgt_tokenizer)}')
+    config_path = './transformer/config/train_transfomrer.yml'
+    config = get_config(config_path)
 
-    model = Transformer(src_tokenizer, tgt_tokenizer, d_model=512, num_heads=8, d_ff=2048, device='cpu')
+    src_tokenizer = AutoTokenizer.from_pretrained(config['model']['src_tokenizer'])
+    tgt_tokenizer = AutoTokenizer.from_pretrained(config['model']['tgt_tokenizer'])
 
-    src_sentence = 'Hello, how are you doing?'
-    tgt_sentence = 'こんにちは、元気ですか？'
+    model = Transformer(src_tokenizer, tgt_tokenizer, d_model=config['model']['d_model'], num_heads=config['model']['num_heads'],
+                        d_ff=config['model']['d_ff'], N=config['model']['N'], dropout=config['model']['dropout'],
+                        device=config['model']['device'], max_len=config['model']['max_len'], eps=config['model']['eps'])
 
-    src = src_tokenizer(src_sentence, return_tensors='pt')['input_ids']
-    tgt = tgt_tokenizer(tgt_sentence, return_tensors='pt')['input_ids']
+    # checkpoint = torch.load(ckpt_path)
+    # model.load_state_dict(checkpoint['model'])
 
-    print(src)
-    print(tgt)
-
-    src_morpheme = src_tokenizer.convert_ids_to_tokens(src[0])
-    tgt_morpheme = tgt_tokenizer.convert_ids_to_tokens(tgt[0])
-    print(tgt_morpheme)
-
-    output = model(src, tgt)
-    print(output['logits'].shape)   # shape: (batch_size, tgt_len, tgt_vocab_size)
-    output_ids = output['logits'].argmax(-1)
-    output_morpheme = tgt_tokenizer.convert_ids_to_tokens(output_ids[0])
-    print(output_morpheme)
+    src = 'Hello, world!.'
+    src = src_tokenizer(src, return_tensors='pt')['input_ids']
+    output = model.inference(src)
+    inf_morpheme = tgt_tokenizer.convert_ids_to_tokens(output['predictions'][0])
+    print(inf_morpheme)
 
     # visualize
+    src_morpheme = src_tokenizer.convert_ids_to_tokens(src[0])
+    print(src_morpheme)
+
     src_attn = []
     for attn in output['encoder_attention']:
         src_attn.append(attn[0])   # first batch
-    visualize_attn(src_morpheme, src_morpheme, src_attn, './results/encoder_attention')
+    visualize_attn(src_morpheme, src_morpheme, src_attn, './results/encoder_attention', 'sample')
