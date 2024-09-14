@@ -124,7 +124,7 @@ class Transformer(nn.Module):
         mask = (x != self.src_tokenizer.pad_token_id).unsqueeze(1).unsqueeze(2)
         return mask
     
-    def inference(self, src, max_len=128):
+    def inference_batch(self, src, max_len=128):
         """ Inference method of transformer model.
         Generate target sequence given source sequence.
 
@@ -138,11 +138,12 @@ class Transformer(nn.Module):
             outputs (dict): dictionary of output tensors
                 {
                     'predictions': torch.Tensor, shape: (batch_size, tgt_len)
-                    'encoder_attention': list of torch.Tensor, shape: (batch_size, num_heads, tgt_len, src_len)
+                    'encoder_attention': list of torch.Tensor, shape: (batch_size, num_heads, src_len, src_len)
                     'decoder_self_attention': list of torch.Tensor, shape: (batch_size, num_heads, tgt_len, tgt_len)
                     'decoder_cross_attention': list of torch.Tensor, shape: (batch_size, num_heads, tgt_len, src_len)
                 }
         """
+        assert len(src.size()) == 2, f'Input shape should be (batch_size, src_len), but got {src.size()}'
 
         batch_size = src.size(0)
         tgt = torch.ones((batch_size, 1), dtype=torch.long, device=src.device) * self.tgt_tokenizer.cls_token_id
@@ -156,8 +157,10 @@ class Transformer(nn.Module):
             dec_output = self.decoder(tgt, enc_output['output'], dec_mask, cross_mask)
             logits = self.head(dec_output['output'])
 
-            next_token = logits[:, -1, :].argmax(dim=-1).unsqueeze(1)
+            next_token = logits[:, -1, :].argmax(dim=-1).unsqueeze(1)   # shape: (batch_size, 1)
             tgt = torch.cat([tgt, next_token], dim=-1)
+            if torch.eq(next_token, self.tgt_tokenizer.sep_token_id).all():
+                break
 
         outputs = {
             'predictions': tgt,
@@ -165,4 +168,34 @@ class Transformer(nn.Module):
             'decoder_self_attention': dec_output['self_attention'],
             'decoder_cross_attention': dec_output['cross_attention']
         }
+        return outputs
+    
+    def inference(self, src, max_len=128):
+        """ Inference method of transformer model.
+        Generate target sequence given source sequence.
+
+        Args:
+            src (torch.Tensor): input tensor of tokenized source sequence
+                shape: (src_len,)
+            max_len (int): maximum length of output sequence
+                default: 128
+
+        Returns:
+            outputs (dict): dictionary of output tensors
+                {
+                    'predictions': torch.Tensor, shape: (tgt_len,)
+                    'encoder_attention': list of torch.Tensor, shape: (num_heads, src_len, src_len)
+                    'decoder_self_attention': list of torch.Tensor, shape: (num_heads, tgt_len, tgt_len)
+                    'decoder_cross_attention': list of torch.Tensor, shape: (num_heads, tgt_len, src_len)
+                }
+        """
+
+        assert len(src.size()) == 1, f'Input shape should be (src_len,), but got {src.size()}'
+        src = src.unsqueeze(0)
+        outputs = self.inference_batch(src, max_len)
+        outputs['predictions'] = outputs['predictions'].squeeze(0)
+        outputs['encoder_attention'] = [attn.squeeze(0) for attn in outputs['encoder_attention']]
+        outputs['decoder_self_attention'] = [attn.squeeze(0) for attn in outputs['decoder_self_attention']]
+        outputs['decoder_cross_attention'] = [attn.squeeze(0) for attn in outputs['decoder_cross_attention']]
+
         return outputs

@@ -21,26 +21,15 @@ if __name__ == '__main__':
     model.load_state_dict(checkpoint['model'])
 
     src = 'Hello, world!.'
-    src = src_tokenizer(src, return_tensors='pt')['input_ids']
+    src = src_tokenizer(src, return_tensors='pt')['input_ids'][0]
     output = model.inference(src)
-    inf_morpheme = tgt_tokenizer.convert_ids_to_tokens(output['predictions'][0])
+    inf_morpheme = tgt_tokenizer.convert_ids_to_tokens(output['predictions'])[1:]
     print(inf_morpheme)
 
     # visualize
-    src_morpheme = src_tokenizer.convert_ids_to_tokens(src[0])
+    src_morpheme = src_tokenizer.convert_ids_to_tokens(src)
     print(src_morpheme)
 
-    src_attn = []
-    for attn in output['encoder_attention']:
-        src_attn.append(attn[0])   # first batch
-    visualize_attn(src_morpheme, src_morpheme, src_attn, './results/encoder_attention', 'src_src')
-
-    tgt_attn = []
-    for attn in output['decoder_cross_attention']:
-        tgt_attn.append(attn[0])   # first batch
-    visualize_attn(inf_morpheme, src_morpheme, tgt_attn, './results/decoder_cross_attention', 'inf_src')
-
-    tgt_attn = []
-    for attn in output['decoder_self_attention']:
-        tgt_attn.append(attn[0])   # first batch
-    visualize_attn(inf_morpheme, inf_morpheme, tgt_attn, './results/decoder_self_attention', 'inf_inf')
+    visualize_attn(src_morpheme, src_morpheme, output['encoder_attention'], './results/encoder_attention', 'src_src')
+    visualize_attn(src_morpheme, inf_morpheme, output['decoder_cross_attention'], './results/decoder_cross_attention', 'inf_src')
+    visualize_attn(inf_morpheme, inf_morpheme, output['decoder_self_attention'], './results/decoder_self_attention', 'inf_inf')

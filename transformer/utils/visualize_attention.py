@@ -24,29 +24,30 @@ def visualize_attn(src_morpheme, tgt_morpheme, attention, output_dir, img_name):
     attn_mat = torch.mean(attn_mat, dim=1)   # shape: (num_layers, tgt_len, src_len)
 
     # add residual attention (re-normalize attention weights)
-    residual_att = torch.eye(attn_mat.size(1))
-    aug_att_mat = attn_mat + residual_att
+    if src_morpheme == tgt_morpheme:
+        residual_att = torch.eye(len(src_morpheme))
+        aug_att_mat = attn_mat + residual_att
+    else:
+        aug_att_mat = attn_mat
     aug_att_mat = aug_att_mat / aug_att_mat.sum(dim=-1).unsqueeze(-1)
-
-    joint_attentions = torch.zeros(aug_att_mat.size())
-    joint_attentions[0] = aug_att_mat[0]
-    for n in range(1, aug_att_mat.size(0)):
-        joint_attentions[n] = torch.matmul(aug_att_mat[n], joint_attentions[n-1])
 
     # plot
     Path(output_dir).mkdir(parents=True, exist_ok=True)
-    attn_mat_np = joint_attentions[-1].detach().numpy()
-    fig, ax = plt.subplots()
-    cax = ax.matshow(attn_mat_np, cmap='bone')
-    for (p, q), val in np.ndenumerate(attn_mat_np):
-        ax.text(q, p, f'{val:.2f}', ha='center', va='center', color='black')
-    fig.colorbar(cax)
+    for i, attn_mat in enumerate(aug_att_mat):
+        attn_mat_np = attn_mat.detach().numpy()   # shape: (tgt_len, src_len)
+        fig, ax = plt.subplots()
+        cax = ax.matshow(attn_mat_np, cmap='bone')
+        for (p, q), val in np.ndenumerate(attn_mat_np):
+            ax.text(q, p, f'{val:.2f}', ha='center', va='center', color='black')
+        fig.colorbar(cax)
 
-    ax.set_xticklabels([''] + src_morpheme, rotation=90)
-    ax.set_yticklabels([''] + tgt_morpheme)
+        ax.set_xticks(np.arange(len(src_morpheme)))
+        ax.set_yticks(np.arange(len(tgt_morpheme)))
+        ax.set_xticklabels(src_morpheme, rotation=90)
+        ax.set_yticklabels(tgt_morpheme)
 
-    ax.xaxis.set_major_locator(ticker.MultipleLocator(1))
-    ax.yaxis.set_major_locator(ticker.MultipleLocator(1))
+        ax.xaxis.set_major_locator(ticker.MultipleLocator(1))
+        ax.yaxis.set_major_locator(ticker.MultipleLocator(1))
 
-    plt.savefig(f'{output_dir}/{img_name}.png')
-    plt.close()
+        plt.savefig(f'{output_dir}/{img_name}_layer{i}.png')
+        plt.close()
