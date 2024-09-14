@@ -80,9 +80,9 @@ class Trainer:
                 self.optimizer.zero_grad()
 
                 with torch.autocast(device_type=self.device, enabled=self.use_amp):
-                    output = self.model(src, tgt[:, :-1])['logits']
-                    output = output.reshape(-1, output.size(2))
-                    tgt = tgt[:, 1:].reshape(-1)
+                    output = self.model(src, tgt[:, :-1])['logits']   # (batch_size, tgt_len, vocab_size)
+                    output = output.reshape(-1, output.size(2))   # (batch_size * tgt_len, vocab_size)
+                    tgt = tgt[:, 1:].reshape(-1)   # (batch_size * tgt_len)
                     loss = self.criterion(output, tgt)
                 self.scaler.scale(loss).backward()
                 # gradient clipping
