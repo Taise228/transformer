@@ -1,5 +1,6 @@
 import argparse
 import logging
+import os
 
 import torch
 import torch.nn as nn
@@ -10,6 +11,7 @@ from transformer.utils import get_config, get_logger
 from transformers import AutoTokenizer
 
 logger = get_logger(__name__, level=logging.INFO)
+os.environ['TOKENIZERS_PARALLELISM'] = 'false'
 
 
 def main(config):

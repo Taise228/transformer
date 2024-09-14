@@ -1,3 +1,4 @@
+import torch
 from transformers import AutoTokenizer
 from transformer.models.transformer import Transformer
 from transformer.utils import get_config
@@ -15,8 +16,9 @@ if __name__ == '__main__':
                         d_ff=config['model']['d_ff'], N=config['model']['N'], dropout=config['model']['dropout'],
                         device=config['model']['device'], max_len=config['model']['max_len'], eps=config['model']['eps'])
 
-    # checkpoint = torch.load(ckpt_path)
-    # model.load_state_dict(checkpoint['model'])
+    ckpt_path = './weights/best.pth'
+    checkpoint = torch.load(ckpt_path)
+    model.load_state_dict(checkpoint['model'])
 
     src = 'Hello, world!.'
     src = src_tokenizer(src, return_tensors='pt')['input_ids']
