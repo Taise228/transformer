@@ -6,10 +6,10 @@ import torch.nn as nn
 from transformer.models.transformer import Transformer
 from transformer.dataset import TranslationDataset
 from transformer.trainer import Trainer
-from transformer.utils import get_config
+from transformer.utils import get_config, get_logger
 from transformers import AutoTokenizer
 
-logging.basicConfig(level=logging.INFO)
+logger = get_logger(__name__, level=logging.INFO)
 
 
 def main(config):

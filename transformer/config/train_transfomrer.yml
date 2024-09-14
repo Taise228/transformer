@@ -8,7 +8,7 @@ model:
   dropout: 0.1   # dropout rate
   max_len: 512   # max length of input sequence
   eps: 0.000001   # epsilon value for layer normalization
-  device: cuda   # device name
+  device: cpu   # device name
 training:
   batch_size: 32   # batch size for training
   epochs: 100   # number of epochs
@@ -21,6 +21,7 @@ training:
   tensorboard: True
   log_dir: logs
   log_interval: 100
+  amp: False   # automatic mixed precision
 data:
   train_data: data/train.txt
   val_data: data/dev.txt

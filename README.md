@@ -70,5 +70,4 @@ python train_transformer.py --config ./transformer/config/train_transfomrer.yml
 # TODO
 
 - publish pretrained weights
-- half precision
 - distributed learning

@@ -41,6 +41,7 @@ def get_config(config_path, model='transformer'):
                 'resume': None,
                 'tensorboard': False,
                 'log_dir': 'logs',
+                'amp': False,
             },
             # data configuration
             'data': {

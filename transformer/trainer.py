@@ -1,5 +1,6 @@
 from pathlib import Path
 import time
+import torch.amp
 import tqdm
 
 import torch
@@ -41,6 +42,10 @@ class Trainer:
         else:
             self.writer = None
 
+        self.use_amp = self.config['training']['amp']
+        self.scaler = torch.GradScaler(device=self.device, enabled=self.use_amp)
+        logger.info(f'use_amp: {self.use_amp}')
+
     def train(self, train_data, valid_data, resume=None):
         """ Train model
         Args:
@@ -58,6 +63,7 @@ class Trainer:
             self.resume(resume)
 
         best_loss = float('inf')
+        best_epoch = 0
         start_time = time.time()
         for epoch in range(self.config['training']['epochs']):
             logger.info(f'Epoch: {epoch+1}/{self.config["training"]["epochs"]}')
@@ -72,17 +78,20 @@ class Trainer:
                 src, tgt = src.to(self.device), tgt.to(self.device)
 
                 self.optimizer.zero_grad()
-                output = self.model(src, tgt[:, :-1])['logits']   # shape: (batch_size, tgt_len, vocab_size)
-                output = output.reshape(-1, output.size(2))   # shape: (batch_size * tgt_len, vocab_size)
-                tgt = tgt[:, 1:].reshape(-1)   # shape: (batch_size * tgt_len), dtype: torch.int64.
-                # CrossEntropyLoss converts the target to one-hot encoding internally.
-                loss = self.criterion(output, tgt)
-                loss.backward()
 
+                with torch.autocast(device_type=self.device, enabled=self.use_amp):
+                    output = self.model(src, tgt[:, :-1])['logits']
+                    output = output.reshape(-1, output.size(2))
+                    tgt = tgt[:, 1:].reshape(-1)
+                    loss = self.criterion(output, tgt)
+                self.scaler.scale(loss).backward()
                 # gradient clipping
+                self.scaler.unscale_(self.optimizer)
                 torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.config['training']['clip_grad_norm'])
 
-                self.optimizer.step()
+                self.scaler.step(self.optimizer)
+                self.scaler.update()
+
                 total_loss += loss.item()
 
                 if (i + 1) % self.config['training']['log_interval'] == 0:
@@ -99,6 +108,8 @@ class Trainer:
             total_loss = 0
             with torch.no_grad():
                 for src, tgt in valid_loader:
+                    src = self.model.src_tokenizer(src, padding=True, truncation=True, return_tensors='pt')['input_ids']
+                    tgt = self.model.tgt_tokenizer(tgt, padding=True, truncation=True, return_tensors='pt')['input_ids']
                     src, tgt = src.to(self.device), tgt.to(self.device)
                     output = self.model(src, tgt[:, :-1])
                     output = output['logits'].reshape(-1, output['logits'].size(2))
@@ -111,12 +122,15 @@ class Trainer:
                 self.writer.add_scalar('Loss/valid', total_loss, epoch + 1)
             if total_loss < best_loss:
                 best_loss = total_loss
+                best_epoch = epoch + 1
                 self.save('best.pth', loss=best_loss)
 
             if epoch > self.warmup_epochs:
                 self.scheduler.step()
 
         self.save('last.pth', loss=total_loss)
+        logger.info(f'Training is done, elapsed time: {time.time() - start_time:.4f}')
+        logger.info(f'Best validation loss: {best_loss:.4f} at epoch: {best_epoch}')
 
     def resume(self, path):
         """ Resume training
