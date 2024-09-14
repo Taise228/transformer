@@ -33,4 +33,14 @@ if __name__ == '__main__':
     src_attn = []
     for attn in output['encoder_attention']:
         src_attn.append(attn[0])   # first batch
-    visualize_attn(src_morpheme, src_morpheme, src_attn, './results/encoder_attention', 'sample')
+    visualize_attn(src_morpheme, src_morpheme, src_attn, './results/encoder_attention', 'src_src')
+
+    tgt_attn = []
+    for attn in output['decoder_cross_attention']:
+        tgt_attn.append(attn[0])   # first batch
+    visualize_attn(inf_morpheme, src_morpheme, tgt_attn, './results/decoder_cross_attention', 'inf_src')
+
+    tgt_attn = []
+    for attn in output['decoder_self_attention']:
+        tgt_attn.append(attn[0])   # first batch
+    visualize_attn(inf_morpheme, inf_morpheme, tgt_attn, './results/decoder_self_attention', 'inf_inf')
